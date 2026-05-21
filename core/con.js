@@ -24,13 +24,7 @@ async function startNarutoMd() {
       keepAliveIntervalMs: 30000,
       syncFullHistory: false,
       markOnlineOnConnect: true,
-      generateHighQualityLinkPreview: false,
-      // Force port and socket options
-      port: 3000,
-      socket: {
-        port: 3000,
-        host: 'localhost'
-      }
+      generateHighQualityLinkPreview: false
     });
     
     const hasSession = fs.existsSync(sessionDir) && fs.readdirSync(sessionDir).length > 0;
@@ -51,28 +45,37 @@ async function startNarutoMd() {
       console.log(chalk.green(`✅ Phone: +${phoneNumber}`));
       console.log(chalk.blue('⏳ Requesting 8-digit code...\n'));
       
+      // Request the code from WhatsApp
       const code = await sock.requestPairingCode(phoneNumber);
       
+      // Show the code to user
       console.log(chalk.green.bold(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
-      console.log(chalk.yellow.bold(`🔑 CODE: ${code}`));
+      console.log(chalk.yellow.bold(`🔑 YOUR CODE: ${code}`));
       console.log(chalk.green.bold(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`));
-      console.log(chalk.white('1. Open WhatsApp → Settings → Linked Devices'));
-      console.log(chalk.white('2. Tap "Link with phone number"'));
-      console.log(chalk.white(`3. Enter code: ${chalk.yellow.bold(code)}`));
-      console.log(chalk.white('4. Bot will connect automatically\n'));
+      console.log(chalk.white('📱 INSTRUCTIONS:'));
+      console.log(chalk.white('1. Open WhatsApp on your phone'));
+      console.log(chalk.white('2. Go to Settings → Linked Devices'));
+      console.log(chalk.white('3. Tap "Link with phone number"'));
+      console.log(chalk.white(`4. Enter this code: ${chalk.yellow.bold(code)}`));
+      console.log(chalk.white('5. Bot will connect automatically\n'));
       
-      console.log(chalk.blue('⏳ Waiting for you to enter the code...\n'));
+      console.log(chalk.blue('⏳ Waiting for you to enter the code in WhatsApp...\n'));
       
-      // Wait for connection
+      // WAIT for connection to open (user enters code)
       await new Promise((resolve) => {
-        const handler = (update) => {
+        const checkConnection = (update) => {
           if (update.connection === 'open') {
-            sock.ev.off('connection.update', handler);
+            sock.ev.off('connection.update', checkConnection);
             resolve();
           }
         };
-        sock.ev.on('connection.update', handler);
+        sock.ev.on('connection.update', checkConnection);
       });
+      
+      console.log(chalk.green('\n✅ Code accepted! Connected!\n'));
+      
+    } else {
+      console.log(chalk.green('✅ Session found, connecting...\n'));
     }
     
     sock.ev.on('connection.update', async (update) => {
